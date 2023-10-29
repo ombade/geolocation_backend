@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Display and Capture Location on Map</title>
+	<style>
+		.h1 {
+			font-size: 40px;
+			font-weight: bold;
+			color: #009900;
+			margin-left: 20px;
+		}
+
+		.main {
+			margin-left: 150px;
+		}
+
+		p {
+			font-size: 20px;
+			margin-left: 20px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="h1">choose location s</div>
+<h1>Hello</h1>
+	<p>Display and Capture Location on Map</p>
+
+	<button class="main" type="button" onclick="getlocation();">
+		Current Position
+	</button>
+	<div id="demo2" style="width: 500px; height: 500px"></div>
+	<p>Click on the map to capture coordinates:</p>
+	<div id="capturedCoordinates"></div>
+	<script src="https://maps.google.com/maps/api/js?sensor=false"></script>
+	<script type="text/javascript">
+		var mapg;
+		var marker;
+
+		function initializeMap() {
+			var lattlong = new google.maps.LatLng(0, 0); // Default to (0, 0)
+			var OPTions = {
+				center: lattlong,
+				zoom: 10,
+				mapTypeControl: true,
+				navigationControlOptions: {
+					style: google.maps.NavigationControlStyle.SMALL,
+				},
+			};
+			mapg = new google.maps.Map(document.getElementById("demo2"), OPTions);
+			marker = new google.maps.Marker({
+				position: lattlong,
+				map: mapg,
+				title: "Location",
+				draggable: true, // Allow marker to be dragged
+			});
+
+			// Add a click event listener to the map to capture coordinates on click
+			google.maps.event.addListener(mapg, "click", function(event) {
+				var clickedLocation = event.latLng;
+				updateCoordinates(clickedLocation.lat(), clickedLocation.lng());
+			});
+		}
+
+		function updateCoordinates(lat, lng) {
+			document.getElementById("capturedCoordinates").innerHTML =
+				"Clicked Coordinates: Latitude " + lat + ", Longitude " + lng;
+			marker.setPosition(new google.maps.LatLng(lat, lng));
+		}
+
+		function getlocation() {
+			if (navigator.geolocation) {
+				navigator.geolocation.getCurrentPosition(showLoc, errHand);
+			}
+		}
+
+		function showLoc(pos) {
+			var latt = pos.coords.latitude;
+			var long = pos.coords.longitude;
+			var lattlong = new google.maps.LatLng(latt, long);
+			updateCoordinates(latt, long);
+			mapg.setCenter(lattlong);
+			marker.setPosition(lattlong);
+		}
+
+		function errHand(err) {
+			switch (err.code) {
+				case err.PERMISSION_DENIED:
+					alert("The application doesn't have permission to use location services.");
+					break;
+				case err.POSITION_UNAVAILABLE:
+					alert("The location of the device is uncertain.");
+					break;
+				case err.TIMEOUT:
+					alert("The request to get user location timed out.");
+					break;
+				case err.UNKNOWN_ERROR:
+					alert("Time to fetch location information exceeded the maximum timeout interval.");
+					break;
+			}
+		}
+
+		// Initialize the map when the page loads
+		initializeMap();
+	</script>
+</body>
+</html>
