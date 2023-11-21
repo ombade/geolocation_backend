@@ -1,107 +1,288 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-	<title>Display and Capture Location on Map</title>
-	<style>
-		.h1 {
-			font-size: 40px;
-			font-weight: bold;
-			color: #009900;
-			margin-left: 20px;
-		}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display and Capture Location on Map</title>
 
-		.main {
-			margin-left: 150px;
-		}
+    <style>
+        .h1 {
+            font-size: 40px;
+            font-weight: bold;
+            color: #009900;
+            margin-left: 20px;
+        }
 
-		p {
-			font-size: 20px;
-			margin-left: 20px;
-		}
-	</style>
+        .container {
+            display: flex;
+            flex-direction: row;
+            margin-top: 20px;
+        }
+
+        #map-container {
+            flex: 1;
+            height: 500px;
+        }
+
+        #message-container {
+            flex: 1;
+            margin-left: 20px;
+        }
+
+        p {
+            font-size: 20px;
+        }
+
+        #messageInput {
+            width: 100%;
+            padding: 10px;
+        }
+
+        #user-locations-container {
+            margin-top: 20px;
+        }
+
+        .location-card {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        /* Added styles for the new table */
+        .table-container {
+            margin-top: 20px;
+        }
+
+        /* Custom styles for the table */
+        .custom-table {
+            width: 100%;
+        }
+
+        .custom-table th,
+        .custom-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        .custom-table th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .custom-table tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .alert-card {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 
 <body>
-	<div class="h1">choose location s</div>
-<h1>Hello</h1>
-	<p>Display and Capture Location on Map</p>
+    <div class="h1">Choose Location</div>
+    <div class="container">
+        <div id="map-container">
+            <div id="demo2" style="width: 100%; height: 100%"></div>
+            <p>Click on the map to capture coordinates</p>
+        </div>
+        <div id="message-container">
+            <h1>Hello   {{uid}}</h1>
+            <p>Enter your message:</p>
+            <input type="text" id="messageInput" class="form-control" placeholder="Enter your message">
+            <br>
+            <p>Enter The range in km :</p>
+            <input type="number" id="range" class="form-control" placeholder="range" min="0.5" max="5"
+                oninput="updateTextInput(this.value)">
+            <p>Value: <span id="vol-value">0</span></p>
+            <br>
 
-	<button class="main" type="button" onclick="getlocation();">
-		Current Position
-	</button>
-	<div id="demo2" style="width: 500px; height: 500px"></div>
-	<p>Click on the map to capture coordinates:</p>
-	<div id="capturedCoordinates"></div>
-	<script src="https://maps.google.com/maps/api/js?sensor=false"></script>
-	<script type="text/javascript">
-		var mapg;
-		var marker;
+            <button class="btn btn-success" onclick="submitData('{{ uid }}')">Submit</button>
 
-		function initializeMap() {
-			var lattlong = new google.maps.LatLng(0, 0); // Default to (0, 0)
-			var OPTions = {
-				center: lattlong,
-				zoom: 10,
-				mapTypeControl: true,
-				navigationControlOptions: {
-					style: google.maps.NavigationControlStyle.SMALL,
-				},
-			};
-			mapg = new google.maps.Map(document.getElementById("demo2"), OPTions);
-			marker = new google.maps.Marker({
-				position: lattlong,
-				map: mapg,
-				title: "Location",
-				draggable: true, // Allow marker to be dragged
-			});
+            <button class="btn btn-primary" onclick="getlocation()">Current Location</button>
+        </div>
+    </div>
 
-			// Add a click event listener to the map to capture coordinates on click
-			google.maps.event.addListener(mapg, "click", function(event) {
-				var clickedLocation = event.latLng;
-				updateCoordinates(clickedLocation.lat(), clickedLocation.lng());
-			});
-		}
+    <div id="user-locations-container" class="container">
+        <!-- Location alerts will be displayed here -->
+    </div>
 
-		function updateCoordinates(lat, lng) {
-			document.getElementById("capturedCoordinates").innerHTML =
-				"Clicked Coordinates: Latitude " + lat + ", Longitude " + lng;
-			marker.setPosition(new google.maps.LatLng(lat, lng));
-		}
+    <!-- New table structure -->
+    <div class="table-container">
+        <h1>Location Information</h1>
+        <div class="table-responsive">
+            <!-- Your table structure here -->
+        </div>
+    </div>
 
-		function getlocation() {
-			if (navigator.geolocation) {
-				navigator.geolocation.getCurrentPosition(showLoc, errHand);
-			}
-		}
 
+    
+
+
+    <script src="https://maps.google.com/maps/api/js?sensor=false"></script>
+    <script type="text/javascript">
+        var mapg;
+        var marker;
+        var entry = {};
+        var locationObj ={};
+
+        function initializeMap() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                    var options = {
+                        center: initialLocation,
+                        zoom: 10,
+                        mapTypeControl: true,
+                        navigationControlOptions: {
+                            style: google.maps.NavigationControlStyle.SMALL,
+                        },
+                    };
+                    mapg = new google.maps.Map(document.getElementById("demo2"), options);
+                    marker = new google.maps.Marker({
+                        position: initialLocation,
+                        map: mapg,
+                        title: "Location",
+                        draggable: true, // Allow marker to be dragged
+                    });
+
+                    // Add a click event listener to the map to capture coordinates on click
+                    google.maps.event.addListener(mapg, "click", function (event) {
+                        var clickedLocation = event.latLng;
+                        // var message = document.getElementById('messageInput').value;
+                        updateCoordinates(clickedLocation.lat(), clickedLocation.lng());
+                    });
+                }, function () {
+                    handleLocationError(true, infoWindow, map.getCenter());
+                });
+            } else {
+                // Browser doesn't support Geolocation
+                handleLocationError(false, infoWindow, map.getCenter());
+            }
+        }
+
+        function updateCoordinates(lat, lng) {
+            marker.setPosition(new google.maps.LatLng(lat, lng));
+            entry = {
+                "latitude": lat,
+                "longitude": lng
+                // "message": message
+            };
+            console.log(entry);
+        }
+
+        async function submitData(uid) {
+            // Validate required fields
+            var messageInput = document.getElementById("messageInput").value.trim();
+            var rangeInput = document.getElementById("range").value.trim();
+
+            if (!messageInput || !rangeInput) {
+                alert("Please fill in all required fields.");
+                return;
+            }
+
+            entry.message = messageInput;
+            entry.radius = rangeInput;
+            entry.uid = uid;
+
+            console.log(entry);
+
+            try {
+                const response = await fetch('https://salmon-painter-hkkrg.pwskills.app:5000/alertdata', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(entry),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log(data);
+                alert("Alert Set successfully");
+            } catch (error) {
+                console.error('Error:', error.message);
+            }
+        }
+        function getlocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var latt = position.coords.latitude;
+                    var long = position.coords.longitude;
+                    var lattlong = new google.maps.LatLng(latt, long);
+                    var message = document.getElementById('messageInput').value;
+                    updateCoordinates(latt, long, message);
+                    mapg.setCenter(lattlong);
+                    marker.setPosition(lattlong);
+                }, function () {
+                    handleLocationError(true, infoWindow, map.getCenter());
+                });
+            } else {
+                handleLocationError(false, infoWindow, map.getCenter());
+            }
+        }
+
+        function handleLocationError(browserHasGeolocation, infoWindow, pos) {
+            console.log(browserHasGeolocation
+                ? 'Error: The Geolocation service failed.'
+                : 'Error: Your browser doesn\'t support geolocation.');
+        }
+        function getlocation() {
+            navigator.geolocation.getCurrentPosition(showLoc);
+        }
 		function showLoc(pos) {
-			var latt = pos.coords.latitude;
-			var long = pos.coords.longitude;
-			var lattlong = new google.maps.LatLng(latt, long);
-			updateCoordinates(latt, long);
-			mapg.setCenter(lattlong);
-			marker.setPosition(lattlong);
+			locationObj.latitude = pos.coords.latitude;
+			locationObj.longitude = pos.coords.longitude;
+			console.log(locationObj);
 		}
+      
+        initializeMap();
 
-		function errHand(err) {
-			switch (err.code) {
-				case err.PERMISSION_DENIED:
-					alert("The application doesn't have permission to use location services.");
-					break;
-				case err.POSITION_UNAVAILABLE:
-					alert("The location of the device is uncertain.");
-					break;
-				case err.TIMEOUT:
-					alert("The request to get user location timed out.");
-					break;
-				case err.UNKNOWN_ERROR:
-					alert("Time to fetch location information exceeded the maximum timeout interval.");
-					break;
-			}
-		}
+        // Send data every 15 seconds
+        setInterval(function () {
+            getlocation();
+            
+                console.log(locationObj);
+            var xhr = new XMLHttpRequest();
+            var url = 'https://salmon-painter-hkkrg.pwskills.app:5000/currdata';
+            xhr.open('POST', url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify(locationObj));
+        }, 15000);
+        function updateTextInput(val) {
+  document.getElementById('vol-value').textContent = val;
+}
+async function fetchUserLocations(uid) {
+    try {
+        const response = await fetch(`https://salmon-painter-hkkrg.pwskills.app:5000/get_user_locations/${uid}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
 
-		// Initialize the map when the page loads
-		initializeMap();
-	</script>
+        const data = await response.json();
+        displayLocationAlerts(data);
+    } catch (error) {
+        console.error('Error fetching user locations:', error.message);
+    }
+}
+
+// Call this function with the user's UID to fetch and display locations
+fetchUserLocations('{{ uid }}');
+
+
+</script>
 </body>
+
 </html>
