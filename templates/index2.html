@@ -134,7 +134,18 @@
         var marker;
         var entry = {};
         var locationObj ={};
-
+        function showNotification(message) {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    const notification = new Notification("Location Alert", {
+                        body: message,
+                        icon: "icon.png"
+                    });
+                } else {
+                    console.log("Permission denied for notifications");
+                }
+            });
+        }
         function initializeMap() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function (position) {
@@ -251,16 +262,35 @@
         initializeMap();
 
         // Send data every 15 seconds
-        setInterval(function () {
+        setInterval(async function () {
             getlocation();
-            
-                console.log(locationObj);
-            var xhr = new XMLHttpRequest();
-            var url = 'https://salmon-painter-hkkrg.pwskills.app:5000/currdata';
-            xhr.open('POST', url, true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.send(JSON.stringify(locationObj));
+        
+            console.log(locationObj);
+        
+            try {
+                const response = await fetch('https://salmon-painter-hkkrg.pwskills.app:5000/currdata', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(locationObj),
+                });
+        
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+        
+                const data = await response.json();
+                console.log(data);
+        
+                if (data.alert === 1) {
+                    showNotification("Alert: The current location is within the specified area. Message: " + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error.message);
+            }
         }, 15000);
+        
         function updateTextInput(val) {
   document.getElementById('vol-value').textContent = val;
 }

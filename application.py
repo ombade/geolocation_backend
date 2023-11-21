@@ -413,8 +413,19 @@ def receive_curr_data():
 
     if check_within_area(target_latitude, target_longitude, current_latitude, current_longitude, radius):
         print("Alert: The current location is within the specified area.")
-        # Send a request to the frontend for the alert
-        # Add your code here to send a request to the frontend
+        
+        # Retrieve the message stored in MongoDB at the target location
+        location_data = location_collection.find_one(
+            {'latitude': target_latitude, 'longitude': target_longitude}
+        )
+        
+        if location_data:
+            message_from_mongo = location_data.get('message', '')
+            response_data = {
+                'message': f'Alert: The current location is within the specified area. Message: {message_from_mongo}',
+                'alert': True
+            }
+            return jsonify(response_data)
 
     return jsonify({'message': 'Data received'})
 
