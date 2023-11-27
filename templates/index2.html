@@ -139,7 +139,8 @@
                 if (permission === "granted") {
                     const notification = new Notification("Location Alert", {
                         body: message,
-                        icon: "icon.png"
+                        icon: "logo.png"
+
                     });
                 } else {
                     console.log("Permission denied for notifications");
@@ -204,7 +205,18 @@
             entry.message = messageInput;
             entry.radius = rangeInput;
             entry.uid = uid;
-
+            if (entry.latitude === null || entry.latitude === 0 || entry.latitude === undefined) {
+                getlocation();
+            
+                console.log(locationObj);
+            
+               
+                
+                    entry.latitude = locationObj.latitude;
+                    entry.longitude = locationObj.longitude;
+                
+            }
+            
             console.log(entry);
 
             try {
@@ -256,6 +268,7 @@
 		function showLoc(pos) {
 			locationObj.latitude = pos.coords.latitude;
 			locationObj.longitude = pos.coords.longitude;
+            locationObj.uid = "{{uid}}";
 			console.log(locationObj);
 		}
       
@@ -283,8 +296,9 @@
                 const data = await response.json();
                 console.log(data);
         
-                if (data.alert === 1) {
-                    showNotification("Alert: The current location is within the specified area. Message: " + data.message);
+                if (data.alert === true) {
+                    alert(data.message);
+                    showNotification( data.message);
                 }
             } catch (error) {
                 console.error('Error:', error.message);

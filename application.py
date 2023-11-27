@@ -4,6 +4,7 @@ from math import sin, cos, sqrt, atan2, radians
 from flask_cors import CORS
 from bson import ObjectId 
 import pymongo
+import logging
 import json
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -13,6 +14,7 @@ class CustomJSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 app = Flask(__name__)
+app.logger.setLevel(logging.DEBUG)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 app.json_encoder = CustomJSONEncoder 
 
@@ -21,17 +23,17 @@ db = client['GEOlocation']
 info = db["users"]
 messages_collection = db["messages"]
 location_collection = db["location"]
-
+global target_latitude, target_longitude, radius
 @app.route('/alertdata', methods=['POST'])
 def receive_alert_data():
-    global target_latitude, target_longitude, radius
+    
     content = request.get_json()
 
     # Extract data from the request
     target_latitude = content.get('latitude', '')
     target_longitude = content.get('longitude', '')
     message = content.get('message', '')
-    radius = content.get('radius', '')  # Assuming the radius is sent from the frontend
+    radius = content.get('radius', '')  
     uid = content.get('uid', '')
 
     # Create a document to be inserted into the MongoDB collection
@@ -50,30 +52,54 @@ def receive_alert_data():
 
     return jsonify({"status": "success", "message": "Data stored successfully"}), 201
 
+
+
+
 @app.route('/currdata', methods=['POST'])
 def receive_curr_data():
-    global target_latitude, target_longitude, radius
     content = request.get_json()
 
     current_latitude = content['latitude']
     current_longitude = content['longitude']
+    uid = content['uid']
+    app.logger.info(uid)
     print(f"Received current location data. Latitude: {current_latitude}, Longitude: {current_longitude}")
 
-    if check_within_area(float(target_latitude), float(target_longitude), float(current_latitude), float(current_longitude), float(radius)):
-        print("Alert: The current location is within the specified area.")
-        
-        # Retrieve the message stored in MongoDB at the target location
-        location_data = location_collection.find_one(
-            {'latitude': target_latitude, 'longitude': target_longitude}
-        )
-        
-        if location_data:
-            message_from_mongo = location_data.get('message', '')
+    # Retrieve target location and radius based on user uid
+    user_data = location_collection.find_one({'uid': uid})
+    app.logger.info(user_data)
+    if user_data:
+        target_latitude = user_data['latitude']
+        target_longitude = user_data['longitude']
+        target_radius = user_data['range']
+        message = user_data['message']
+        app.logger.info("target_radius-> ",target_radius , " " ,"current_latitude=> ",current_latitude)
+        if float(current_latitude) == float(target_latitude) or float(current_longitude) == float(target_longitude) :
             response_data = {
-                'message': f'Alert: The current location is within the specified area. Message: {message_from_mongo}',
+                'message': message,
                 'alert': True
             }
+
+            
+            location_collection.delete_one({'uid': uid})
             return jsonify(response_data)
+
+        if check_within_area(float(target_latitude), float(target_longitude), float(current_latitude), float(current_longitude), float(radius)):
+            print("Alert: The current location is within the specified area.")
+
+            # Retrieve the message stored in MongoDB at the target location
+            location_data = location_collection.find_one(
+                {'latitude': target_latitude, 'longitude': target_longitude}
+            )
+
+            if location_data:
+                message_from_mongo = location_data.get('message', '')
+                response_data = {
+                    'message': message,
+                    'alert': True
+                }
+                location_collection.delete_one({'uid': uid})
+                return jsonify(response_data)
 
     return jsonify({'message': 'Data received'})
 
@@ -95,10 +121,11 @@ def signup():
 
     if info.find_one({"email": email}):
         return jsonify({"error": "Email already exists"}), 409
-
+    if info.find_one({"user": user_id}):
+        return jsonify({"error": "UID already exists"}), 409
     data = {
         "email": email,
-        "password": password,  # Note: In a production scenario, hash the password
+        "password": password,  
         "user": user_id
     }
     info.insert_one(data)
@@ -303,11 +330,11 @@ def admii():
     # Assuming the UID is part of the request data
     uid = request.form.get('uid')  # You might need to adjust this depending on how the UID is sent
 
-    # Check if UID is "om"
+  
     if uid == 'om':
         return render_template("index.html")
     else:
-        # Handle the case where UID is not "om", you can redirect or return an error message
+        
         return "Invalid UID. Access denied."
 
 if __name__ == "__main__":
